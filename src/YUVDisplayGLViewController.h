@@ -7,7 +7,7 @@
 //
 
 #import <GLKit/GLKit.h>
-#import "FfmpegWrapper.h"
+#import "../../../TeraPlayer/FfmpegWrapper.h"
 
 @interface YUVDisplayGLViewController : GLKViewController
 
