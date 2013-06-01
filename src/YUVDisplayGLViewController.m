@@ -403,8 +403,8 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
             [self updateTexture:frameData.colorPlane0 width:frameData.width.intValue height:frameData.height.intValue textureIndex:0];
             [self updateTexture:frameData.colorPlane1 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:1];
             [self updateTexture:frameData.colorPlane2 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:2];
-            _textureWidth = frameData.width.intValue;
-            _textureHeight = frameData.height.intValue;
+//            _textureWidth = frameData.width.intValue;
+//            _textureHeight = frameData.height.intValue;
         }
         return 0;
     }else{
