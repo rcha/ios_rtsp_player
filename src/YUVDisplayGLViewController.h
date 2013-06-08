@@ -13,6 +13,4 @@
 
 -(int) loadFrameData: (AVFrameData *) frameData;
 
--(BOOL) shouldHideMaster;
-
 @end
