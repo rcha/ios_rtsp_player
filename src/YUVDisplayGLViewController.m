@@ -81,6 +81,8 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     float _curRed;
     BOOL _increasing;
     
+    float _pixelAspectRatio;
+    
     GLuint _vertexBuffer;
     GLuint _indexBuffer;
     
@@ -162,6 +164,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     // setup the textures
     _textureWidth = 1280;
     _textureHeight = 720;
+    _pixelAspectRatio = 1;
     _yTexture = [self setupTexture:nil width:_textureWidth height:_textureHeight textureIndex:0];
     _uTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:1];
     _vTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:2];
@@ -313,8 +316,10 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
 - (void) setGLViewportToScale
 {
     CGFloat scaleFactor = [[UIScreen mainScreen] scale];
+    if (_pixelAspectRatio < 0.0000001)
+        _pixelAspectRatio = 1;
     if (_textureHeight!=0 && _textureWidth!=0){
-        float targetRatio = _textureWidth/(_textureHeight*1.0);
+        float targetRatio = _textureWidth/(_textureHeight*1.0)*_pixelAspectRatio;
         float viewRatio = self.view.bounds.size.width/(self.view.bounds.size.height*1.0);
         uint16_t x,y,width,height;
         if (targetRatio>viewRatio){
@@ -329,7 +334,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
             y=0;
             x=(self.view.bounds.size.width*scaleFactor-width)/2;
         }
-        glViewport(x,y,width,height);
+         glViewport(x,y,width,height);
     }else{
         glViewport(self.view.bounds.origin.x, self.view.bounds.origin.y,
                    self.view.bounds.size.width*scaleFactor, self.view.bounds.size.height*scaleFactor);
@@ -400,9 +405,10 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
             [self updateTexture:frameData.colorPlane0 width:frameData.width.intValue height:frameData.height.intValue textureIndex:0];
             [self updateTexture:frameData.colorPlane1 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:1];
             [self updateTexture:frameData.colorPlane2 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:2];
-//            _textureWidth = frameData.width.intValue;
-//            _textureHeight = frameData.height.intValue;
+            _textureWidth = frameData.width.intValue;
+            _textureHeight = frameData.height.intValue;
         }
+        _pixelAspectRatio = frameData.pixelAspectRatio;
         return 0;
     }else{
         return -1;
