@@ -11,6 +11,6 @@
 
 @interface YUVDisplayGLViewController : GLKViewController
 
--(int) loadFrameData: (AVFrameData *) frameData;
+-(int) loadFrameData: (AVFrameData) frameData;
 
 @end

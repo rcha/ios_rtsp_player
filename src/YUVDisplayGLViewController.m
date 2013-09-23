@@ -203,16 +203,19 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
 
 #pragma mark - texture setup
 
-- (void) updateTexture: (NSData*)textureData width:(uint) width height:(uint) height textureIndex:(GLuint)index
+- (void) updateTexture: (char*)textureData width:(uint) width height:(uint) height textureIndex:(GLuint)index
 {
     long renderStatus = dispatch_semaphore_wait(_textureUpdateRenderSemaphore, DISPATCH_TIME_NOW);
     if (renderStatus==0){
         GLubyte *glTextureData;
         if (textureData){
-            glTextureData = (GLubyte*)(textureData.bytes);
+            glTextureData = (GLubyte*)(textureData);
         }else{
             glTextureData = (GLubyte *) malloc(width*height);
-            memset(glTextureData, 0, width*height);
+            if (index == 0)
+                memset(glTextureData, 0x10, width*height);
+            else
+                memset(glTextureData, 0x80, width*height);
         }
         glActiveTexture(GL_TEXTURE0+index);
         //        glBindTexture(GL_TEXTURE_2D, texName);
@@ -225,7 +228,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     }
 }
 
-- (GLuint)setupTexture:(NSData *)textureData width:(uint) width height:(uint) height textureIndex:(GLuint) index
+- (GLuint)setupTexture:(char *)textureData width:(uint) width height:(uint) height textureIndex:(GLuint) index
 {
     GLuint texName;
     
@@ -382,9 +385,9 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
 
 #pragma mark - loading the texture data
 
-- (int) loadFrameData:(AVFrameData *)frameData
+- (int) loadFrameData:(AVFrameData)frameData
 {
-    if (frameData && self.context){
+    if (/*frameData && */self.context){
             
         
         [EAGLContext setCurrentContext:self.context];
@@ -404,11 +407,11 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
 //            [self updateTexture:frameData.colorPlane2 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureName:_vTexture textureIndex:2];
 //        }
         if (_yTexture && _uTexture && _vTexture){
-            [self updateTexture:frameData.colorPlane0 width:frameData.width.intValue height:frameData.height.intValue textureIndex:0];
-            [self updateTexture:frameData.colorPlane1 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:1];
-            [self updateTexture:frameData.colorPlane2 width:frameData.width.intValue/2 height:frameData.height.intValue/2 textureIndex:2];
-            _textureWidth = frameData.width.intValue;
-            _textureHeight = frameData.height.intValue;
+            [self updateTexture:frameData.colorPlane0 width:frameData.width height:frameData.height textureIndex:0];
+            [self updateTexture:frameData.colorPlane1 width:frameData.width/2 height:frameData.height/2 textureIndex:1];
+            [self updateTexture:frameData.colorPlane2 width:frameData.width/2 height:frameData.height/2 textureIndex:2];
+            _textureWidth = frameData.width;
+            _textureHeight = frameData.height;
         }
         _pixelAspectRatio = frameData.pixelAspectRatio;
         return 0;
