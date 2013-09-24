@@ -169,7 +169,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     _uTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:1];
     _vTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:2];
     
-    [self setPauseOnWillResignActive:NO];
+    [self setPauseOnWillResignActive:YES];
 }
 
 - (void)tearDownGL {
