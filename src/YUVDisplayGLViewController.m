@@ -54,10 +54,17 @@ NSString *const vertexShaderString = SHADER_STRING
 
 NSString *const rgbFragmentShaderString = SHADER_STRING
 (
+ precision highp float;
+ 
  varying highp vec2 TexCoordOut;
  uniform sampler2D s_texture_y;
  uniform sampler2D s_texture_u;
  uniform sampler2D s_texture_v;
+ 
+ uniform sampler2D s_texture_lut;
+ uniform float lut_size;
+ uniform float lut_scale;
+ uniform float lut_offset;
  
  void main()
  {
@@ -69,9 +76,24 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
      highp float g = y - 0.344 * u - 0.714 * v;
      highp float b = y + 1.772 * u;
      
-     gl_FragColor = vec4(r,g,b,1.0);
+     if (lut_size > 0.0) {
+         vec3 c = vec3(r, g, b);
+         c = clamp(c, 0.0, 1.0);
+         c = vec3(lut_scale * c.rg + lut_offset, c.b);
+         
+         float cb_sc = c.b * (lut_size - 1.0);
+         float y1 = (c.g + floor(cb_sc))/lut_size;
+         float y2 = y1 + 1.0/lut_size;
+         
+         vec3 out_color1 = texture2D(s_texture_lut, vec2(c.r, y1)).rgb;
+         vec3 out_color2 = texture2D(s_texture_lut, vec2(c.r, y2)).rgb;
+         vec3 out_color = mix(out_color1, out_color2, (cb_sc - floor(cb_sc)));
+         
+         gl_FragColor = vec4(out_color,1.0);
+     } else {
+         gl_FragColor = vec4(r,g,b,1.0);
+     }
  }
- 
 );
 
 
@@ -98,6 +120,16 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     GLuint _yTextureUniform;
     GLuint _uTextureUniform;
     GLuint _vTextureUniform;
+    
+    uint16_t _lutDataSize;
+    GLuint _lutTexture;
+    GLuint _lutTextureUniform;
+    GLfloat _lutSize;
+    GLfloat _lutScale;
+    GLfloat _lutOffset;
+    GLuint _lutSizeUniform;
+    GLuint _lutScaleUniform;
+    GLuint _lutOffsetUniform;
     
     dispatch_semaphore_t _textureUpdateRenderSemaphore;
 
@@ -169,6 +201,10 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     _uTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:1];
     _vTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:2];
     
+    // setup LUT texture
+    _lutDataSize = 4;
+    _lutTexture = [self setupLut:nil size:_lutDataSize];
+    
     [self setPauseOnWillResignActive:YES];
 }
 
@@ -183,6 +219,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     glDeleteTextures(1, &_uTexture);
     glDeleteTextures(1, &_vTexture);
     
+    glDeleteTextures(1, &_lutTexture);
 }
 
 -(void)viewDidUnload
@@ -227,6 +264,47 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
         dispatch_semaphore_signal(_textureUpdateRenderSemaphore);
     }
 }
+- (void) updateLut: (char*)textureData size:(uint) size
+{
+    long renderStatus = dispatch_semaphore_wait(_textureUpdateRenderSemaphore, DISPATCH_TIME_NOW);
+    if (renderStatus==0){
+        GLubyte *glTextureData;
+        
+        if (size > 1) {
+            if (textureData) {
+                glTextureData = (GLubyte*)(textureData);
+            } else {
+                glTextureData = (GLubyte *) malloc(size*size*size*4);
+                for (int r = 0; r < size; r++) {
+                    for (int g = 0; g < size; g++) {
+                        for (int b = 0; b < size; b++) {
+                            int offs = ((b*size+g)*size+r)*4;
+                            glTextureData[offs] = (float)r/(size-1)*255;
+                            glTextureData[offs+1] = (float)g/(size-1)*255;
+                            glTextureData[offs+2] = (float)b/(size-1)*255;
+                            glTextureData[offs+3] = 255;
+                        }
+                    }
+                }
+            }
+            glActiveTexture(GL_TEXTURE0+3);
+            //glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size, size*size, 0, GL_RGBA, GL_UNSIGNED_BYTE, glTextureData);
+            
+            if (!textureData){
+                free(glTextureData);
+            }
+            
+            _lutSize = size;
+            _lutScale = (_lutSize - 1.0)/_lutSize;
+            _lutOffset = 1.0/(2.0*_lutSize);
+        } else {
+            _lutSize = -1;
+        }
+        
+        dispatch_semaphore_signal(_textureUpdateRenderSemaphore);
+    }
+}
 
 - (GLuint)setupTexture:(char *)textureData width:(uint) width height:(uint) height textureIndex:(GLuint) index
 {
@@ -237,6 +315,24 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     glBindTexture(GL_TEXTURE_2D, texName);
     
     [self updateTexture:textureData width:width height:height textureIndex:index];
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    return texName;
+}
+
+- (GLuint)setupLut:(char *)textureData size:(uint) size
+{
+    GLuint texName;
+    
+    glGenTextures(1, &texName);
+    glActiveTexture(GL_TEXTURE0+3);
+    glBindTexture(GL_TEXTURE_2D, texName);
+    
+    [self updateLut:textureData size:size];
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -315,6 +411,12 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     _yTexture = 0;
     _uTexture = 0;
     _vTexture = 0;
+    
+    _lutTextureUniform = glGetUniformLocation(programHandle, "s_texture_lut");
+    _lutTexture = 0;
+    _lutSizeUniform = glGetUniformLocation(programHandle, "lut_size");
+    _lutScaleUniform = glGetUniformLocation(programHandle, "lut_scale");
+    _lutOffsetUniform = glGetUniformLocation(programHandle, "lut_offset");
 }
 
 #pragma mark - render code
@@ -373,13 +475,16 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
 //    glBindTexture(GL_TEXTURE_2D, _vTexture);
     glUniform1i(_vTextureUniform, 2);
     
+    glUniform1i(_lutTextureUniform, 3);
+    glUniform1f(_lutSizeUniform, _lutSize);
+    glUniform1f(_lutScaleUniform, _lutScale);
+    glUniform1f(_lutOffsetUniform, _lutOffset);
+    
     // draw
     glDrawElements(GL_TRIANGLES, sizeof(Indices)/sizeof(Indices[0]),
                    GL_UNSIGNED_BYTE, 0);
     
     [self.context presentRenderbuffer:GL_RENDERBUFFER];
- 
-    
 }
 
 
