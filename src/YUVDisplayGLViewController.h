@@ -12,5 +12,6 @@
 @interface YUVDisplayGLViewController : GLKViewController
 
 -(int) loadFrameData: (AVFrameData) frameData;
+- (void) updateLut: (char*)textureData size:(uint) size;
 
 @end
