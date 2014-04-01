@@ -45,6 +45,7 @@ NSString *const vertexShaderString = SHADER_STRING
  attribute vec2 TexCoordIn;
  varying vec2 TexCoordOut;
  
+ 
  void main(void) { // 4
      DestinationColor = SourceColor; // 5
      gl_Position = Position; // 6
