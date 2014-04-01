@@ -121,7 +121,6 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     GLuint _uTextureUniform;
     GLuint _vTextureUniform;
     
-    uint16_t _lutDataSize;
     GLuint _lutTexture;
     GLuint _lutTextureUniform;
     GLfloat _lutSize;
@@ -202,8 +201,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     _vTexture = [self setupTexture:nil width:_textureWidth/2 height:_textureHeight/2 textureIndex:2];
     
     // setup LUT texture
-    _lutDataSize = 4;
-    _lutTexture = [self setupLut:nil size:_lutDataSize];
+    _lutTexture = [self setupLut:nil size:0];
     
     [self setPauseOnWillResignActive:YES];
 }
