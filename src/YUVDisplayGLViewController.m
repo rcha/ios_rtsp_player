@@ -65,6 +65,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
  uniform float lut_size;
  uniform float lut_scale;
  uniform float lut_offset;
+ uniform float lut_split_position;
  
  void main()
  {
@@ -76,7 +77,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
      highp float g = y - 0.344 * u - 0.714 * v;
      highp float b = y + 1.772 * u;
      
-     if (lut_size > 0.0) {
+     if (lut_size > 0.0 && TexCoordOut.x <= lut_split_position) {
          vec3 c = vec3(r, g, b);
          c = clamp(c, 0.0, 1.0);
          c = vec3(lut_scale * c.rg + lut_offset, c.b);
@@ -126,9 +127,11 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     GLfloat _lutSize;
     GLfloat _lutScale;
     GLfloat _lutOffset;
+    GLfloat _lutSplitPosition;
     GLuint _lutSizeUniform;
     GLuint _lutScaleUniform;
     GLuint _lutOffsetUniform;
+    GLuint _lutSplitPositionUniform;
     
     dispatch_semaphore_t _textureUpdateRenderSemaphore;
 
@@ -202,6 +205,8 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     
     // setup LUT texture
     _lutTexture = [self setupLut:nil size:0];
+    
+    _lutSplitPosition = 2.0;
     
     [self setPauseOnWillResignActive:YES];
 }
@@ -302,6 +307,12 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
         
         dispatch_semaphore_signal(_textureUpdateRenderSemaphore);
     }
+}
+
+- (void) updateLutSplitPosition: (float)position
+{
+    // position = 0.0 (most frame is without LUT correction) .. 1.0 (all frame with LUT correction)
+    _lutSplitPosition = position;
 }
 
 - (GLuint)setupTexture:(char *)textureData width:(uint) width height:(uint) height textureIndex:(GLuint) index
@@ -415,6 +426,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     _lutSizeUniform = glGetUniformLocation(programHandle, "lut_size");
     _lutScaleUniform = glGetUniformLocation(programHandle, "lut_scale");
     _lutOffsetUniform = glGetUniformLocation(programHandle, "lut_offset");
+    _lutSplitPositionUniform = glGetUniformLocation(programHandle, "lut_split_position");
 }
 
 #pragma mark - render code
@@ -477,6 +489,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     glUniform1f(_lutSizeUniform, _lutSize);
     glUniform1f(_lutScaleUniform, _lutScale);
     glUniform1f(_lutOffsetUniform, _lutOffset);
+    glUniform1f(_lutSplitPositionUniform, _lutSplitPosition);
     
     // draw
     glDrawElements(GL_TRIANGLES, sizeof(Indices)/sizeof(Indices[0]),
