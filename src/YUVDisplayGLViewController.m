@@ -544,7 +544,7 @@ NSString *const rgbFragmentShaderString = SHADER_STRING
     [self setPaused:NO];
     long textureUpdateStatus = dispatch_semaphore_wait(_textureUpdateRenderSemaphore, DISPATCH_TIME_NOW);
     if (textureUpdateStatus==0){
-        glClearColor(0.0, 0.0, 0.0, 1.0);
+        glClearColor(0.0f, 0.0f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         [self render];
         dispatch_semaphore_signal(_textureUpdateRenderSemaphore);

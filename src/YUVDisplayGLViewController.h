@@ -13,5 +13,6 @@
 
 -(int) loadFrameData: (AVFrameData) frameData;
 - (void) updateLut: (char*)textureData size:(uint) size;
+- (void) updateLutSplitPosition: (float)position;
 
 @end
